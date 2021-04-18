@@ -1,8 +1,8 @@
 clear all
-clc;
-pkg load signal
+clc
+%pkg load signal
 
-%% Radar Specifications 
+%% Radar Specifications
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Frequency of operation = 77GHz
 % Max Range = 200m
@@ -19,7 +19,7 @@ dist_res = 1; % m
 max_vel = 100; % m/s
 c = 3e8; % m/s
 R = 150; % m
-initial_vel = 50; % m/s 
+initial_vel = 50; % m/s
 
 %% FMCW Waveform Generation
 
@@ -34,14 +34,14 @@ B = c/(2* dist_res); % meter
 Tchirp = 5.5 * 2 * range_max/c; % sec
 alpha = B/Tchirp; % slope
 
-%Operating carrier frequency of Radar 
+%Operating carrier frequency of Radar
 fc= 77e9;             %carrier freq
 
 %The number of chirps in one sequence. Its ideal to have 2^ value for the ease of running the FFT
-%for Doppler Estimation. 
+%for Doppler Estimation.
 Nd=128;                   % #of doppler cells OR #of sent periods % number of chirps
 
-%The number of samples on each chirp. 
+%The number of samples on each chirp.
 Nr=1024;                  %for length of time OR # of range cells
 
 % Timestamp for running the displacement scenario for every sample on each
@@ -58,23 +58,23 @@ r_t=zeros(1,length(t));
 td=zeros(1,length(t));
 
 %% Signal generation and Moving Target simulation
-% Running the radar scenario over the time. 
+% Running the radar scenario over the time.
 
-for i=1:length(t)     
-  
+for i=1:length(t)
+    
     t_ = t(i);
     
     Tx(i) = cos(2*pi* (fc*t_ + (alpha*t_^2/2)));
     
     %target 1
-    vehicle_dist = R + (initial_vel * t_);    
+    vehicle_dist = R + (initial_vel * t_);
     return_time = 2*vehicle_dist/c;
     del_t = t_-return_time;
     
     %simulating one more targer at 100 meter range and 40 m/s approach velocity
-    vehicle_dist1 = 100 + (-40 * t_);    
-    return_time1 = 2*vehicle_dist1/c;    
-    del_t1 = t_-return_time1;    
+    vehicle_dist1 = 100 + (-40 * t_);
+    return_time1 = 2*vehicle_dist1/c;
+    del_t1 = t_-return_time1;
     
     %adding both targets to the return signal
     Rx (i) = cos(2*pi* (fc*del_t + (alpha *del_t^2/2 ))) + cos(2*pi* (fc*del_t1 + (alpha *del_t1^2/2 )));
@@ -104,7 +104,7 @@ range_fft_half = range_fft(1:(Nr/2),1);
 figure ('Name','Range from First FFT')
 
 %subplot(2,1,1)
-%plot FFT output 
+%plot FFT output
 plot(range_fft_half);
 xlabel('distance to object');
 ylabel('frequency response');
@@ -139,7 +139,7 @@ colorbar;
 Tr = 10;
 Td = 8;
 
-%Select the number of Guard Cells in both dimensions around the Cell under 
+%Select the number of Guard Cells in both dimensions around the Cell under
 %test (CUT) for accurate estimation
 Gr = 4;
 Gd = 4;
@@ -155,32 +155,32 @@ no_of_cols = 2 * (Td+Gd+1);
 % CFAR
 
 for i = Tr+Gr+1 : (Nr/2)-(Tr+Gr)
-  for j = Td+Gd+1 : Nd-(Td+Gd)
-    
-    %now loop through the training cells within the window
-    noise_level = zeros(1,1);
-    for p = i-(Tr+Gr) : i+Tr+Gr
-      for q = j-(Td+Gd) : j+Td+Gd
-        if(abs(i-p) > Gr || abs(j-q) > Gd)
-          noise_level = noise_level + db2pow(thresh_RDM(p,q));
-         endif
-       endfor
-     endfor
-     
-    total_training_cell = no_of_cols*no_of_row - (Gr*Gd) -1;
-    threshold = pow2db(noise_level/total_training_cell);
-    threshold = threshold + offset;
-    
-    CUT = thresh_RDM(i,j);
-    
-    if(CUT < threshold)
-      thresh_RDM(i,j) = 0;
-    else
-      thresh_RDM(i,j) = 1;
-    endif
-    
-  endfor
-endfor
+    for j = Td+Gd+1 : Nd-(Td+Gd)
+        
+        %now loop through the training cells within the window
+        noise_level = zeros(1,1);
+        for p = i-(Tr+Gr) : i+Tr+Gr
+            for q = j-(Td+Gd) : j+Td+Gd
+                if(abs(i-p) > Gr || abs(j-q) > Gd)
+                    noise_level = noise_level + db2pow(thresh_RDM(p,q));
+                end
+            end
+        end
+        
+        total_training_cell = no_of_cols*no_of_row - (Gr*Gd) -1;
+        threshold = pow2db(noise_level/total_training_cell);
+        threshold = threshold + offset;
+        
+        CUT = thresh_RDM(i,j);
+        
+        if(CUT < threshold)
+            thresh_RDM(i,j) = 0;
+        else
+            thresh_RDM(i,j) = 1;
+        end
+        
+    end
+end
 
 thresh_RDM(thresh_RDM ~= 0 & thresh_RDM ~= 1) = 0;
 
